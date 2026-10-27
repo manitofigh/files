@@ -1,20 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * shmem swap-in loop on a large swap-cache folio built from reused slots.
- * file z fills the first cluster of a 4m brd swap device, so file x's 64k
- * folio goes out as one order-4 entry at slots 512..527. the reader swaps
- * x back in; the punch thread, fifo on the same cpu and woken by a timer
- * early in that read, punches x and swaps out pages 1..16 of file y into
- * the freed slots. if it lands between the reader's lookup of x's entry
- * and its swap cache insert, a 64k folio for y's slots stays in the swap
- * cache, and a fault on y page 2 retries forever in shmem_get_folio_gfp():
- * it spins in the kernel, survives sigkill, and a munmap() of its mapping
- * waits in d state (hung task).
+ * Usage: shmemloop SWAPDEV XDIR YDIR [SECONDS]
  *
- * usage: shmemloop SWAPDEV XDIR YDIR [SECONDS]
- *   SWAPDEV: an mkswap'ed 4m brd device, not in use
- *   XDIR: a tmpfs mounted huge=within_size, YDIR: one mounted huge=never
- * (shmemloop --fault FILE is the faulting child it starts each round)
+ * SWAPDEV is a 4M brd device formatted with mkswap.  It shouldn't be in
+ * use as swap yet, since the program turns it on itself.  XDIR is a tmpfs
+ * mounted with huge=within_size, and YDIR is a tmpfs mounted with
+ * huge=never.  SECONDS is how long to keep trying (600 by default).
+ * Run it as root.
+ *
+ * Each round, the program starts a copy of itself as
+ * "shmemloop --fault FILE" to do the page fault.  You don't need to run
+ * that form yourself.
  */
 #define _GNU_SOURCE
 #include <dirent.h>
